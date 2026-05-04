@@ -40,7 +40,7 @@ def update_project(project_id: str, project: Project):
     cursor = db.cursor()
     cursor.execute(
         "UPDATE projects SET walls=%s, wallCount=%s WHERE id=%s",
-        (json.dumps(project.walls), project.wallCount, project_id)
+        #(json.dumps(project.walls), project.wallCount, project_id)
     )
     db.commit()
     cursor.close()
