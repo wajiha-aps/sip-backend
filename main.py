@@ -60,7 +60,20 @@ def save_project(project: Project):
     cursor.close()
     db.close()
     return {"success": True}
-
+    
+@app.get("/projects/{project_id}")
+def get_project(project_id: str):
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+    cursor.execute("SELECT * FROM projects WHERE id=%s", (project_id,))
+    row = cursor.fetchone()
+    cursor.close()
+    db.close()
+    if not row:
+        return {"error": "Not found"}
+    row['walls'] = json.loads(row['walls'])
+    return row
+    
 @app.put("/projects/{project_id}")
 def update_project(project_id: str, project: Project):
     db = get_db()
