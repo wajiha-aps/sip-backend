@@ -26,11 +26,26 @@ def get_db():
 
 class Project(BaseModel):
     id: str
-    name: str
-    prefix: str
-    createdAt: str
+    name: Optional[str] = None
+    prefix: Optional[str] = None
+    createdAt: Optional[str] = None
     walls: List[dict] = []
     wallCount: int = 0
+    scale: Optional[float] = None
+    backgroundImage: Optional[str] = None
+
+@app.put("/projects/{project_id}")
+def update_project(project_id: str, project: Project):
+    db = get_db()
+    cursor = db.cursor()
+    cursor.execute(
+        "UPDATE projects SET walls=%s, wallCount=%s WHERE id=%s",
+        (json.dumps(project.walls), project.wallCount, project_id)
+    )
+    db.commit()
+    cursor.close()
+    db.close()
+    return {"success": True}
 
 @app.get("/")
 def root():
@@ -73,19 +88,6 @@ def get_project(project_id: str):
         return {"error": "Not found"}
     row['walls'] = json.loads(row['walls'])
     return row
-    
-@app.put("/projects/{project_id}")
-def update_project(project_id: str, project: Project):
-    db = get_db()
-    cursor = db.cursor()
-    cursor.execute(
-        "UPDATE projects SET name=%s, walls=%s, wallCount=%s WHERE id=%s",
-        (project.name, json.dumps(project.walls), project.wallCount, project_id)
-    )
-    db.commit()
-    cursor.close()
-    db.close()
-    return {"success": True}
 
 @app.delete("/projects/{project_id}")
 def delete_project(project_id: str):
