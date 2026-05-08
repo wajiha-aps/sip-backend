@@ -5,6 +5,8 @@ from typing import List, Optional
 import mysql.connector
 import os
 import json
+from datetime import datetime
+import hashlib
 
 app = FastAPI()
 
@@ -24,6 +26,107 @@ def get_db():
         port=int(os.environ.get("MYSQLPORT", 3306))
     )
 
+
+# Add to your Project model area — new models
+class User(BaseModel):
+    id: str
+    name: str
+    email: str
+    password: str
+    role: str  # admin, salesperson, client
+
+class LoginRequest(BaseModel):
+    email: str
+    password: str
+
+class PricingItem(BaseModel):
+    id: str
+    name: str
+    size: str
+    price: float
+    type: str  # wall, roof, end, kit, spline
+
+def hash_password(password: str):
+    return hashlib.sha256(password.encode()).hexdigest()
+
+# User endpoints
+@app.post("/users")
+def create_user(user: User):
+    db = get_db()
+    cursor = db.cursor()
+    cursor.execute(
+        "INSERT INTO users (id, name, email, password, role) VALUES (%s, %s, %s, %s, %s)",
+        (user.id, user.name, user.email, hash_password(user.password), user.role)
+    )
+    db.commit()
+    cursor.close()
+    db.close()
+    return {"success": True}
+
+@app.post("/login")
+def login(req: LoginRequest):
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+    cursor.execute(
+        "SELECT * FROM users WHERE email=%s AND password=%s",
+        (req.email, hash_password(req.password))
+    )
+    user = cursor.fetchone()
+    cursor.close()
+    db.close()
+    if not user:
+        return {"error": "Invalid email or password"}
+    return {
+        "id": user["id"],
+        "name": user["name"],
+        "email": user["email"],
+        "role": user["role"]
+    }
+
+@app.get("/users")
+def get_users():
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+    cursor.execute("SELECT id, name, email, role FROM users")
+    rows = cursor.fetchall()
+    cursor.close()
+    db.close()
+    return rows
+
+@app.delete("/users/{user_id}")
+def delete_user(user_id: str):
+    db = get_db()
+    cursor = db.cursor()
+    cursor.execute("DELETE FROM users WHERE id=%s", (user_id,))
+    db.commit()
+    cursor.close()
+    db.close()
+    return {"success": True}
+
+# Pricing endpoints
+@app.get("/pricing")
+def get_pricing():
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+    cursor.execute("SELECT * FROM pricing")
+    rows = cursor.fetchall()
+    cursor.close()
+    db.close()
+    return rows
+
+@app.put("/pricing/{item_id}")
+def update_pricing(item_id: str, item: PricingItem):
+    db = get_db()
+    cursor = db.cursor()
+    cursor.execute(
+        "UPDATE pricing SET price=%s WHERE id=%s",
+        (item.price, item_id)
+    )
+    db.commit()
+    cursor.close()
+    db.close()
+    return {"success": True}
+    
 class Project(BaseModel):
     id: str
     name: Optional[str] = None
