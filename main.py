@@ -201,3 +201,30 @@ def delete_project(project_id: str):
     cursor.close()
     db.close()
     return {"success": True}
+
+class SignupRequest(BaseModel):
+    name: str
+    email: str
+    password: str
+
+@app.post("/signup")
+def signup(req: SignupRequest):
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+    # Check if email already exists
+    cursor.execute("SELECT id FROM users WHERE email=%s", (req.email,))
+    existing = cursor.fetchone()
+    if existing:
+        cursor.close()
+        db.close()
+        return {"error": "Email already in use"}
+    import uuid
+    user_id = str(uuid.uuid4())
+    cursor.execute(
+        "INSERT INTO users (id, name, email, password, role) VALUES (%s, %s, %s, %s, %s)",
+        (user_id, req.name, req.email, hash_password(req.password), "salesperson")
+    )
+    db.commit()
+    cursor.close()
+    db.close()
+    return {"id": user_id, "name": req.name, "email": req.email, "role": "salesperson"}
