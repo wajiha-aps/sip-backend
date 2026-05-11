@@ -155,13 +155,21 @@ def root():
     return {"status": "SIP Backend Running"}
 
 @app.get("/projects")
-def get_projects():
+def get_projects(userId: str = None, role: str = None):
     db = get_db()
     cursor = db.cursor(dictionary=True)
-    cursor.execute("SELECT * FROM projects ORDER BY createdAt DESC")
+    if role == "admin":
+        cursor.execute("SELECT * FROM projects ORDER BY createdAt DESC")
+    elif userId:
+        cursor.execute(
+            "SELECT * FROM projects WHERE ownerId=%s ORDER BY createdAt DESC",
+            (userId,)
+        )
+    else:
+        cursor.execute("SELECT * FROM projects ORDER BY createdAt DESC")
     rows = cursor.fetchall()
     for row in rows:
-        row["walls"] = json.loads(row["walls"])
+        row["walls"] = json.loads(row["walls"] or "[]")
     cursor.close()
     db.close()
     return rows
